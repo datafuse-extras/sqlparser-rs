@@ -2556,6 +2556,13 @@ impl<'a> Parser<'a> {
         match self.next_token() {
             Token::Word(w) => Ok(w.to_ident()),
             Token::SingleQuotedString(s) => Ok(Ident::with_quote('\'', s)),
+            // DatafuseQuery use this function parse token next LIKE
+            // https://github.com/datafuselabs/databend/blob/1ce36c273e5d57cfb82742eff2f5a8559eba6910/query/src/sql/parsers/parser_show.rs#L46
+            // And MySQL support SQL like this:
+            // SHOW TABLES LIKE "X";
+            Token::DoubleQuotedString(s) if dialect_of!(self is MySqlDialect) => {
+                Ok(Ident::with_quote('\"', s))
+            }
             Token::BackQuotedString(s) => Ok(Ident::with_quote('`', s)),
             unexpected => self.expected("identifier", unexpected),
         }
