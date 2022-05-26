@@ -18,8 +18,11 @@
 //! sqlparser regardless of the chosen dialect (i.e. it doesn't conflict with
 //! dialect-specific parsing rules).
 
+extern crate core;
+
 #[macro_use]
 mod test_utils;
+
 use matches::assert_matches;
 use sqlparser::ast::Expr::BinaryOp;
 use sqlparser::ast::*;
@@ -370,6 +373,7 @@ fn parse_update_with_table_alias() {
                         }),
                         args: vec![],
                         with_hints: vec![],
+                        instant: None,
                     },
                     joins: vec![]
                 },
@@ -511,6 +515,22 @@ fn parse_select_all_distinct() {
         ParserError::ParserError("Cannot specify both ALL and DISTINCT".to_string()),
         result.unwrap_err(),
     );
+}
+
+#[test]
+fn parse_select_at() {
+    let select = verified_only_select("SELECT * FROM t at (snapshot => 'the_id')");
+    let from: &TableWithJoins = &select.from[0];
+    match &from.relation {
+        TableFactor::Table { instant, .. } => {
+            if let Some(Instant::SnapshotID(s)) = instant {
+                assert_eq!("the_id", s.as_str());
+            } else {
+                panic!("expecting snapshot id")
+            }
+        }
+        _ => panic!(" expecting TableFactor::Table"),
+    }
 }
 
 #[test]
@@ -2801,11 +2821,13 @@ fn parse_delimited_identifiers() {
             alias,
             args,
             with_hints,
+            instant,
         } => {
             assert_eq!(vec![Ident::with_quote('"', "a table")], name.0);
             assert_eq!(Ident::with_quote('"', "alias"), alias.unwrap().name);
             assert!(args.is_empty());
             assert!(with_hints.is_empty());
+            assert!(instant.is_none());
         }
         _ => panic!("Expecting TableFactor::Table"),
     }
@@ -2957,6 +2979,7 @@ fn parse_implicit_join() {
                     alias: None,
                     args: vec![],
                     with_hints: vec![],
+                    instant: None,
                 },
                 joins: vec![],
             },
@@ -2966,6 +2989,7 @@ fn parse_implicit_join() {
                     alias: None,
                     args: vec![],
                     with_hints: vec![],
+                    instant: None,
                 },
                 joins: vec![],
             }
@@ -2983,6 +3007,7 @@ fn parse_implicit_join() {
                     alias: None,
                     args: vec![],
                     with_hints: vec![],
+                    instant: None,
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {
@@ -2990,6 +3015,7 @@ fn parse_implicit_join() {
                         alias: None,
                         args: vec![],
                         with_hints: vec![],
+                        instant: None,
                     },
                     join_operator: JoinOperator::Inner(JoinConstraint::Natural),
                 }]
@@ -3000,6 +3026,7 @@ fn parse_implicit_join() {
                     alias: None,
                     args: vec![],
                     with_hints: vec![],
+                    instant: None,
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {
@@ -3007,6 +3034,7 @@ fn parse_implicit_join() {
                         alias: None,
                         args: vec![],
                         with_hints: vec![],
+                        instant: None,
                     },
                     join_operator: JoinOperator::Inner(JoinConstraint::Natural),
                 }]
@@ -3027,6 +3055,7 @@ fn parse_cross_join() {
                 alias: None,
                 args: vec![],
                 with_hints: vec![],
+                instant: None,
             },
             join_operator: JoinOperator::CrossJoin
         },
@@ -3047,6 +3076,7 @@ fn parse_joins_on() {
                 alias,
                 args: vec![],
                 with_hints: vec![],
+                instant: None,
             },
             join_operator: f(JoinConstraint::On(Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("c1".into())),
@@ -3100,6 +3130,7 @@ fn parse_joins_using() {
                 alias,
                 args: vec![],
                 with_hints: vec![],
+                instant: None,
             },
             join_operator: f(JoinConstraint::Using(vec!["c1".into()])),
         }
@@ -3145,6 +3176,7 @@ fn parse_natural_join() {
                 alias: None,
                 args: vec![],
                 with_hints: vec![],
+                instant: None,
             },
             join_operator: f(JoinConstraint::Natural),
         }
@@ -3383,6 +3415,7 @@ fn parse_derived_tables() {
                     alias: None,
                     args: vec![],
                     with_hints: vec![],
+                    instant: None,
                 },
                 join_operator: JoinOperator::Inner(JoinConstraint::Natural),
             }],

@@ -550,6 +550,7 @@ fn parse_update_with_joins() {
                         }),
                         args: vec![],
                         with_hints: vec![],
+                        instant: None,
                     },
                     joins: vec![Join {
                         relation: TableFactor::Table {
@@ -560,6 +561,7 @@ fn parse_update_with_joins() {
                             }),
                             args: vec![],
                             with_hints: vec![],
+                            instant: None,
                         },
                         join_operator: JoinOperator::Inner(JoinConstraint::On(Expr::BinaryOp {
                             left: Box::new(Expr::CompoundIdentifier(vec![
@@ -665,7 +667,8 @@ fn parse_substring_in_select() {
                                 }]),
                                 alias: None,
                                 args: vec![],
-                                with_hints: vec![]
+                                with_hints: vec![],
+                                instant: None,
                             },
                             joins: vec![]
                         }],
