@@ -859,7 +859,7 @@ impl<'a> Tokenizer<'a> {
         while let Some((_, ch)) = chars.peek() {
             let ch = *ch;
             match ch {
-                '\n' | '\t' | '\r' | ' ' => {
+                '\n' | '\t' | '\r' | ' ' | ';' | '\0' => {
                     return Ok(s);
                 }
                 _ => {
@@ -1455,7 +1455,7 @@ mod tests {
         ];
         compare(expected, tokens);
 
-        let sql = String::from("list @abc/e/f/g");
+        let sql = String::from("list @abc/e/f/g;");
 
         let dialect = SnowflakeDialect {};
         let mut tokenizer = Tokenizer::new(&dialect, &sql);
@@ -1464,6 +1464,7 @@ mod tests {
             Token::make_word("list", None),
             Token::Whitespace(Whitespace::Space),
             Token::AtString("abc/e/f/g".to_string()),
+            Token::SemiColon,
         ];
         compare(expected, tokens);
     }
