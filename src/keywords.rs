@@ -123,6 +123,7 @@ define_keywords!(
     CLOB,
     CLOSE,
     CLUSTER,
+    CLUSTERING,
     COALESCE,
     COLLATE,
     COLLECT,
@@ -542,6 +543,8 @@ pub const RESERVED_FOR_TABLE_ALIAS: &[Keyword] = &[
     Keyword::UNION,
     Keyword::EXCEPT,
     Keyword::INTERSECT,
+    Keyword::CLUSTER,
+    Keyword::DISTRIBUTE,
     // Reserved only as a table alias in the `FROM`/`JOIN` clauses:
     Keyword::ON,
     Keyword::JOIN,
@@ -552,8 +555,6 @@ pub const RESERVED_FOR_TABLE_ALIAS: &[Keyword] = &[
     Keyword::RIGHT,
     Keyword::NATURAL,
     Keyword::USING,
-    Keyword::CLUSTER,
-    Keyword::DISTRIBUTE,
     // for MSSQL-specific OUTER APPLY (seems reserved in most dialects)
     Keyword::OUTER,
     Keyword::SET,
