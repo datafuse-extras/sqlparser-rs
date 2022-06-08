@@ -11,12 +11,13 @@
 // limitations under the License.
 
 #[cfg(not(feature = "std"))]
-use alloc::boxed::Box;
+use alloc::{boxed::Box, vec::Vec};
 use core::fmt;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+use crate::ast::Ident;
 use crate::ast::ObjectName;
 
 /// SQL data types
@@ -85,6 +86,8 @@ pub enum DataType {
     Custom(ObjectName),
     /// Arrays
     Array(Box<DataType>, bool),
+    /// Tuple
+    Tuple(Option<Vec<Ident>>, Vec<Box<DataType>>),
 }
 
 impl fmt::Display for DataType {
@@ -149,6 +152,10 @@ impl fmt::Display for DataType {
             }
             DataType::Custom(ty) => write!(f, "{}", ty),
             DataType::DateTime(n) => format_type_with_optional_length(f, "DATETIME", n, false),
+            DataType::Tuple(names, types) => match names {
+                Some(names) => format_named_tuple(f, names, types),
+                None => format_tuple(f, types),
+            },
         }
     }
 }
@@ -166,5 +173,38 @@ fn format_type_with_optional_length(
     if unsigned {
         write!(f, " UNSIGNED")?;
     }
+    Ok(())
+}
+
+fn format_tuple(f: &mut fmt::Formatter, types: &[Box<DataType>]) -> fmt::Result {
+    write!(f, "TUPLE(")?;
+    let mut first = true;
+    for ty in types.iter() {
+        if !first {
+            write!(f, ", ")?;
+        }
+        first = false;
+        write!(f, "{}", ty)?;
+    }
+    write!(f, ")")?;
+    Ok(())
+}
+
+fn format_named_tuple(
+    f: &mut fmt::Formatter,
+    names: &[Ident],
+    types: &[Box<DataType>],
+) -> fmt::Result {
+    debug_assert!(names.len() == types.len());
+    write!(f, "TUPLE(")?;
+    let mut first = true;
+    for (name, ty) in names.iter().zip(types.iter()) {
+        if !first {
+            write!(f, ", ")?;
+        }
+        first = false;
+        write!(f, "{} {}", name, ty)?;
+    }
+    write!(f, ")")?;
     Ok(())
 }
