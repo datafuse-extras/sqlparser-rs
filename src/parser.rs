@@ -2452,6 +2452,23 @@ impl<'a> Parser<'a> {
                         Ok(DataType::Custom(type_name))
                     }
                 }
+                Keyword::STRUCT => {
+                    self.expect_token(&Token::LParen)?;
+                    let mut names = Vec::new();
+                    let mut data_types = Vec::new();
+                    loop {
+                        let name = self.parse_identifier()?;
+                        names.push(name);
+                        let data_type = self.parse_data_type()?;
+                        data_types.push(Box::new(data_type));
+                        if self.consume_token(&Token::Comma) {
+                            continue;
+                        }
+                        break;
+                    }
+                    self.expect_token(&Token::RParen)?;
+                    Ok(DataType::Struct(names, data_types))
+                }
                 _ => {
                     self.prev_token();
                     let type_name = self.parse_object_name()?;

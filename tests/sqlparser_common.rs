@@ -1928,6 +1928,33 @@ fn parse_create_table() {
         _ => unreachable!(),
     }
 
+    let sql = "CREATE TABLE struct_test (\
+               s STRUCT(id INT, name STRING),
+               )";
+    let ast = one_statement_parses_to(
+        sql,
+        "CREATE TABLE struct_test (\
+         s STRUCT(id INT, name STRING))",
+    );
+    match ast {
+        Statement::CreateTable { name, columns, .. } => {
+            assert_eq!("struct_test", name.to_string());
+            assert_eq!(
+                columns,
+                vec![ColumnDef {
+                    name: "s".into(),
+                    data_type: DataType::Struct(
+                        vec!["id".into(), "name".into()],
+                        vec![Box::new(DataType::Int(None)), Box::new(DataType::String)]
+                    ),
+                    collation: None,
+                    options: vec![],
+                },]
+            );
+        }
+        _ => unreachable!(),
+    }
+
     let res = parse_sql_statements("CREATE TABLE t (a int NOT NULL GARBAGE)");
     assert!(res
         .unwrap_err()

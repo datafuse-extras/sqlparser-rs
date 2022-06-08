@@ -439,6 +439,7 @@ define_keywords!(
     STDIN,
     STORED,
     STRING,
+    STRUCT,
     SUBMULTISET,
     SUBSTRING,
     SUBSTRING_REGEX,

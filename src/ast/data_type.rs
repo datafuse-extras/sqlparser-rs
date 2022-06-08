@@ -11,12 +11,13 @@
 // limitations under the License.
 
 #[cfg(not(feature = "std"))]
-use alloc::boxed::Box;
+use alloc::{boxed::Box, vec::Vec};
 use core::fmt;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+use crate::ast::Ident;
 use crate::ast::ObjectName;
 
 /// SQL data types
@@ -85,6 +86,8 @@ pub enum DataType {
     Custom(ObjectName),
     /// Arrays
     Array(Box<DataType>),
+    /// Struct
+    Struct(Vec<Ident>, Vec<Box<DataType>>),
 }
 
 impl fmt::Display for DataType {
@@ -143,6 +146,7 @@ impl fmt::Display for DataType {
             DataType::Array(ty) => write!(f, "ARRAY({})", ty),
             DataType::Custom(ty) => write!(f, "{}", ty),
             DataType::DateTime(n) => format_type_with_optional_length(f, "DATETIME", n, false),
+            DataType::Struct(names, types) => format_struct(f, names, types),
         }
     }
 }
@@ -160,5 +164,20 @@ fn format_type_with_optional_length(
     if unsigned {
         write!(f, " UNSIGNED")?;
     }
+    Ok(())
+}
+
+fn format_struct(f: &mut fmt::Formatter, names: &[Ident], types: &[Box<DataType>]) -> fmt::Result {
+    debug_assert!(names.len() == types.len());
+    write!(f, "STRUCT(")?;
+    let mut first = true;
+    for (name, ty) in names.iter().zip(types.iter()) {
+        if !first {
+            write!(f, ", ")?;
+        }
+        first = false;
+        write!(f, "{} {}", name, ty)?;
+    }
+    write!(f, ")")?;
     Ok(())
 }
