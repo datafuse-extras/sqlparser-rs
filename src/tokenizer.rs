@@ -543,6 +543,20 @@ impl<'a> Tokenizer<'a> {
                             return Ok(Some(Token::Period));
                         }
 
+                        // match exponential notation
+                        if matches!(chars.peek(), Some((_, ch)) if ch == &'e' || ch == &'E') {
+                            s.push('e');
+                            chars.next();
+                            if matches!(chars.peek(), Some((_, ch)) if ch == &'+') {
+                                s.push('+');
+                                chars.next();
+                            } else if matches!(chars.peek(), Some((_, ch)) if ch == &'-') {
+                                s.push('-');
+                                chars.next();
+                            }
+                            s += &peeking_take_while(chars, |ch| matches!(ch, '0'..='9'));
+                        }
+
                         let long = if matches!(chars.peek(), Some((_, ch)) if ch == &'L') {
                             chars.next();
                             true
