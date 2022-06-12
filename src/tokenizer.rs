@@ -931,9 +931,7 @@ impl<'a> Tokenizer<'a> {
         chars: &mut Peekable<CharIndices<'_>>,
         token_start: u64,
     ) {
-        if token == &Token::SemiColon
-            || matches!(token, Token::Word(w) if w.keyword == Keyword::VALUES || w.keyword == Keyword::ON)
-        {
+        if token == &Token::SemiColon || matches!(token, Token::Word(_)) {
             let start = QueryOffset::Normal(token_start);
             let end = chars
                 .peek()

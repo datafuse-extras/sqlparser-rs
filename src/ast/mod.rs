@@ -37,7 +37,7 @@ pub use self::ddl::{
 pub use self::operator::{BinaryOperator, UnaryOperator};
 pub use self::query::{
     Cte, Fetch, Instant, Join, JoinConstraint, JoinOperator, LateralView, Offset, OffsetRows,
-    OrderByExpr, Query, Select, SelectItem, SetExpr, SetOperator, StreamValues, TableAlias,
+    OrderByExpr, Query, Select, SelectItem, SetExpr, SetOperator, StreamSlice, TableAlias,
     TableFactor, TableWithJoins, Top, Values, With,
 };
 pub use self::value::{DateTimeField, TrimWhereField, Value};
