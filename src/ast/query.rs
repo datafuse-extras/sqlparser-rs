@@ -86,6 +86,7 @@ pub enum SetExpr {
         right: Box<SetExpr>,
     },
     Values(Values),
+    Streams(StreamSlice),
     Insert(Statement),
     // TODO: ANSI SQL supports `TABLE` here.
 }
@@ -105,6 +106,9 @@ impl fmt::Display for SetExpr {
             } => {
                 let all_str = if *all { " ALL" } else { "" };
                 write!(f, "{} {}{} {}", left, op, all_str, right)
+            }
+            SetExpr::Streams(v) => {
+                write!(f, "{:?}", v)
             }
         }
     }
@@ -624,57 +628,24 @@ impl fmt::Display for Top {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct StreamValues {
+pub struct StreamSlice {
     pub start: QueryOffset,
     pub end: QueryOffset,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Values(pub Vec<Vec<Expr>>, pub StreamValues);
+pub struct Values(pub Vec<Vec<Expr>>);
 
 impl fmt::Display for Values {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.0.is_empty() {
-            write!(f, "VALUES query[{},{})", self.1.start, self.1.end)?;
-        } else {
-            write!(f, "VALUES ")?;
-            let mut delim = "";
-            for row in &self.0 {
-                write!(f, "{}", delim)?;
-                delim = ", ";
-                write!(f, "({})", display_comma_separated(row))?;
-            }
+        write!(f, "VALUES ")?;
+        let mut delim = "";
+        for row in &self.0 {
+            write!(f, "{}", delim)?;
+            delim = ", ";
+            write!(f, "({})", display_comma_separated(row))?;
         }
         Ok(())
     }
 }
-
-// #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-// #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-// pub enum Values {
-//     ExprValues(Vec<Vec<Expr>>),
-//     /// Values start and end position in original query
-//     StreamValues(QueryOffset, QueryOffset),
-// }
-
-// impl fmt::Display for Values {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         match self {
-//             Values::ExprValues(exprs) => {
-//                 write!(f, "VALUES ")?;
-//                 let mut delim = "";
-//                 for row in exprs {
-//                     write!(f, "{}", delim)?;
-//                     delim = ", ";
-//                     write!(f, "({})", display_comma_separated(row))?;
-//                 }
-//             }
-//             Values::StreamValues(start, end) => {
-//                 write!(f, "VALUES query[{},{})", start, end)?;
-//             }
-//         }
-
-//         Ok(())
-//     }
-// }

@@ -2845,10 +2845,10 @@ impl<'a> Parser<'a> {
             SetExpr::Query(Box::new(subquery))
         } else if self.parse_keyword(Keyword::VALUES) {
             let expr_values = self.parse_values()?;
-            SetExpr::Values(Values(expr_values, StreamValues::default()))
+            SetExpr::Values(Values(expr_values))
         } else {
             return self.expected(
-                "SELECT, VALUES, or a subquery in the query body",
+                "SELECT, VALUES, FORMAT or a subquery in the query body",
                 self.peek_token(),
             );
         };
@@ -3506,12 +3506,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse insert statment which directly return values-stream(string).
-    pub fn parse_stream_values_insert(&mut self) -> Result<Statement, ParserError> {
+    pub fn parse_stream_format_insert(&mut self) -> Result<Statement, ParserError> {
         self.parse_insert_with_option(true)
     }
 
     /// Parse an INSERT statement with values option
-    fn parse_insert_with_option(&mut self, stream_values: bool) -> Result<Statement, ParserError> {
+    fn parse_insert_with_option(&mut self, stream_format: bool) -> Result<Statement, ParserError> {
         let or = if !dialect_of!(self is SQLiteDialect) {
             None
         } else if self.parse_keywords(&[Keyword::OR, Keyword::REPLACE]) {
@@ -3563,34 +3563,24 @@ impl<'a> Parser<'a> {
                 None
             };
 
-            let format = if self.parse_keyword(Keyword::FORMAT) {
+            let mut prev_times = 0;
+            let mut format = None;
+
+            if self.parse_keyword(Keyword::FORMAT) {
                 let t = self.next_token();
                 if let Token::Word(Word { value, .. }) = t {
-                    Some(value)
-                } else {
-                    None
+                    format = Some(value);
                 }
             } else if self.parse_keyword(Keyword::VALUES) {
-                let t = self.next_token();
-                if t == Token::EOF {
-                    Some("".to_string())
-                } else {
-                    self.prev_token();
-                    self.prev_token();
-                    None
+                prev_times = 1;
+                if stream_format {
+                    format = Some("Values".to_string());
                 }
-            } else {
-                None
-            };
+            }
 
-            // Hive allows you to specify columns after partitions as well if you want.
-            let after_columns = self.parse_parenthesized_column_list(Optional)?;
-
-            let source = if format.is_some() {
-                None
-            } else if stream_values && self.parse_keyword(Keyword::VALUES) {
-                let stream_values = self.parse_stream_values()?;
-                let body = SetExpr::Values(Values(vec![], stream_values));
+            let source = if stream_format && format.is_some() {
+                let stream_format = self.parse_stream_format()?;
+                let body = SetExpr::Streams(stream_format);
 
                 Some(Box::new(Query {
                     with: None,
@@ -3602,18 +3592,11 @@ impl<'a> Parser<'a> {
                     format: None,
                 }))
             } else {
+                // Values pop_back
+                for _ in 0..prev_times {
+                    self.prev_token();
+                }
                 Some(Box::new(self.parse_query()?))
-            };
-
-            let on = if self.parse_keyword(Keyword::ON) {
-                self.expect_keyword(Keyword::DUPLICATE)?;
-                self.expect_keyword(Keyword::KEY)?;
-                self.expect_keyword(Keyword::UPDATE)?;
-                let l = self.parse_comma_separated(Parser::parse_assignment)?;
-
-                Some(OnInsert::DuplicateKeyUpdate(l))
-            } else {
-                None
             };
 
             Ok(Statement::Insert {
@@ -3622,11 +3605,11 @@ impl<'a> Parser<'a> {
                 overwrite,
                 partitioned,
                 columns,
-                after_columns,
+                after_columns: vec![],
                 source,
                 table,
                 format,
-                on,
+                on: None,
             })
         }
     }
@@ -3815,24 +3798,21 @@ impl<'a> Parser<'a> {
         Ok(values)
     }
 
-    pub fn parse_stream_values(&mut self) -> Result<StreamValues, ParserError> {
+    pub fn parse_stream_format(&mut self) -> Result<StreamSlice, ParserError> {
         self.prev_token();
-        let values_idx = self.index;
+        let format_idx = self.index;
         let expected = self.peek_token();
         self.next_token();
 
-        let start = self.get_values_start(values_idx, expected)?;
+        let start = self.get_slice_start(format_idx, expected)?;
 
-        // Skip to end of the values, One of ';', 'eof', 'on duplicate key update'.
+        // Skip to end of the values, One of ';', 'eof'
+        // We do not have to suport 'on duplicate key update'.
         let mut idx = self.index;
         loop {
             let peek_token = self.tokens.get(idx).unwrap_or(&Token::EOF);
             match peek_token {
                 Token::EOF | Token::SemiColon => {
-                    self.index = idx;
-                    break;
-                }
-                Token::Word(w) if w.keyword == Keyword::ON => {
                     self.index = idx;
                     break;
                 }
@@ -3843,12 +3823,12 @@ impl<'a> Parser<'a> {
         let end = if self.peek_token() == Token::EOF {
             QueryOffset::EOF
         } else {
-            self.get_values_end(idx, self.peek_token())?
+            self.get_slice_end(idx, self.peek_token())?
         };
 
-        assert!(start.less_than(&end));
+        assert!(start.less_eq_than(&end));
 
-        Ok(StreamValues { start, end })
+        Ok(StreamSlice { start, end })
     }
 
     pub fn parse_start_transaction(&mut self) -> Result<Statement, ParserError> {
@@ -3960,7 +3940,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn get_values_start(&self, idx: usize, expected: Token) -> Result<QueryOffset, ParserError> {
+    fn get_slice_start(&self, idx: usize, expected: Token) -> Result<QueryOffset, ParserError> {
         let (token, (_, end)) = self.position_map.get(&idx).ok_or_else(|| {
             ParserError::ParserError(format!(
                 "{}'s position does not exists, idx: {}",
@@ -3975,10 +3955,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn get_values_end(&self, idx: usize, expected: Token) -> Result<QueryOffset, ParserError> {
+    fn get_slice_end(&self, idx: usize, expected: Token) -> Result<QueryOffset, ParserError> {
         let (token, (start, _)) = self.position_map.get(&idx).ok_or_else(|| {
             ParserError::ParserError(format!(
-                "VALUES end is not correct, values end: {}, idx: {}",
+                "Format stream end is not correct, values end: {}, idx: {}",
                 expected, idx
             ))
         })?;

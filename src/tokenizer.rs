@@ -262,12 +262,12 @@ impl Default for QueryOffset {
 
 impl QueryOffset {
     /// Since sqlparser need work in non std env, we use this replace with std order
-    pub fn less_than(&self, other: &QueryOffset) -> bool {
+    pub fn less_eq_than(&self, other: &QueryOffset) -> bool {
         match (self, other) {
-            (QueryOffset::Normal(v1), QueryOffset::Normal(v2)) => v1 < v2,
+            (QueryOffset::Normal(v1), QueryOffset::Normal(v2)) => v1 <= v2,
             (QueryOffset::Normal(_), QueryOffset::EOF) => true,
             (QueryOffset::EOF, QueryOffset::Normal(_)) => false,
-            (QueryOffset::EOF, QueryOffset::EOF) => false,
+            (QueryOffset::EOF, QueryOffset::EOF) => true,
         }
     }
 }
@@ -931,9 +931,7 @@ impl<'a> Tokenizer<'a> {
         chars: &mut Peekable<CharIndices<'_>>,
         token_start: u64,
     ) {
-        if token == &Token::SemiColon
-            || matches!(token, Token::Word(w) if w.keyword == Keyword::VALUES || w.keyword == Keyword::ON)
-        {
+        if token == &Token::SemiColon || matches!(token, Token::Word(_)) {
             let start = QueryOffset::Normal(token_start);
             let end = chars
                 .peek()

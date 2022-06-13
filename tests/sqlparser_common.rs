@@ -65,30 +65,6 @@ fn parse_insert_values() {
         "",
     );
 
-    let sql = "INSERT INTO public.customer (`id`, `name`, `active`) VALUES";
-    check_one(
-        sql,
-        "public.customer",
-        &["id".to_string(), "name".to_string(), "active".to_string()],
-        &[],
-        "",
-    );
-
-    let sql = "INSERT INTO public.customer VALUES";
-    check_one(sql, "public.customer", &[], &[], "");
-
-    let sql = "INSERT INTO public.customer FORMAT TSV";
-    check_one(sql, "public.customer", &[], &[], "TSV");
-
-    let sql = "INSERT INTO public.customer (id, name, active) FORMAT TSV";
-    check_one(
-        sql,
-        "public.customer",
-        &["id".to_string(), "name".to_string(), "active".to_string()],
-        &[],
-        "TSV",
-    );
-
     fn check_one(
         sql: &str,
         expected_table_name: &str,
@@ -112,7 +88,7 @@ fn parse_insert_values() {
 
                 match &source {
                     Some(source) => match &source.body {
-                        SetExpr::Values(Values(values, _)) => {
+                        SetExpr::Values(Values(values)) => {
                             assert_eq!(values.as_slice(), expected_rows)
                         }
                         _ => unreachable!(),
@@ -162,6 +138,13 @@ fn parse_stream_values_insert() {
             expected_format: "".to_string(),
         },
         TestCase {
+            sql: "INSERT INTO t FORMAT CSV".to_string(),
+            expected_table_name: "t".to_string(),
+            expected_columns: vec![],
+            expected_values: "".to_string(),
+            expected_format: "CSV".to_string(),
+        },
+        TestCase {
             sql: "insert into t values(now(), now(), today(), today());".to_string(),
             expected_table_name: "t".to_string(),
             expected_columns: vec![],
@@ -169,11 +152,11 @@ fn parse_stream_values_insert() {
             expected_format: "".to_string(),
         },
         TestCase {
-            sql: "INSERT INTO t(c1,c2) values (1,2) on duplicate key update c3 = 10;".to_string(),
+            sql: "INSERT INTO t(c1,c2) FORMAT TSV 1\t3\n3\t4".to_string(),
             expected_table_name: "t".to_string(),
             expected_columns: vec![String::from("c1"), String::from("c2")],
-            expected_values: " (1,2) ".to_string(),
-            expected_format: "".to_string(),
+            expected_values: " 1\t3\n3\t4".to_string(),
+            expected_format: "TSV".to_string(),
         },
     ];
 
@@ -187,7 +170,7 @@ fn parse_stream_values_insert() {
         all_dialects().run_parser_method(sql, |parser| {
             parser.next_token();
 
-            match parser.parse_stream_values_insert().unwrap() {
+            match parser.parse_stream_format_insert().unwrap() {
                 Statement::Insert {
                     table_name,
                     columns,
@@ -203,14 +186,15 @@ fn parse_stream_values_insert() {
 
                     match &source {
                         Some(source) => match &source.body {
-                            SetExpr::Values(Values(_, stream_values)) => {
-                                let values = match (&stream_values.start, &stream_values.end) {
+                            SetExpr::Streams(streams) => {
+                                let values = match (&streams.start, &streams.end) {
                                     (QueryOffset::Normal(start), QueryOffset::Normal(end)) => {
                                         &sql[*start as usize..*end as usize]
                                     }
                                     (QueryOffset::Normal(start), QueryOffset::EOF) => {
                                         &sql[*start as usize..]
                                     }
+                                    (QueryOffset::EOF, QueryOffset::EOF) => "",
                                     _ => unreachable!(),
                                 };
                                 assert_eq!(values, expected_values)
@@ -237,12 +221,18 @@ fn parse_insert_stream_values_invalid() {
 
     let tests: Vec<TestCase> = vec![
         TestCase {
-            sql: "INSERT into t values 1,2,3) on".to_string(),
-            expected_err: ParserError::ParserError("Expected DUPLICATE, found: EOF".to_string()),
+            sql: "INSERT into t z 1,2,3) on".to_string(),
+            expected_err: ParserError::ParserError(
+                "Expected SELECT, VALUES, FORMAT or a subquery in the query body, found: z"
+                    .to_string(),
+            ),
         },
         TestCase {
-            sql: "INSERT into t values 1,2,3) on;".to_string(),
-            expected_err: ParserError::ParserError("Expected DUPLICATE, found: ;".to_string()),
+            sql: "INSERT into t t 1,2,3) on;".to_string(),
+            expected_err: ParserError::ParserError(
+                "Expected SELECT, VALUES, FORMAT or a subquery in the query body, found: t"
+                    .to_string(),
+            ),
         },
     ];
 
@@ -251,7 +241,7 @@ fn parse_insert_stream_values_invalid() {
         let expected_err = &test.expected_err;
         all_dialects().run_parser_method(sql, |parser| {
             parser.next_token();
-            let result = parser.parse_stream_values_insert();
+            let result = parser.parse_stream_format_insert();
             assert_eq!(&result.unwrap_err(), expected_err);
         });
     }
@@ -3585,7 +3575,8 @@ fn parse_exists_subquery() {
     let res = parse_sql_statements("SELECT EXISTS (");
     assert_eq!(
         ParserError::ParserError(
-            "Expected SELECT, VALUES, or a subquery in the query body, found: EOF".to_string()
+            "Expected SELECT, VALUES, FORMAT or a subquery in the query body, found: EOF"
+                .to_string()
         ),
         res.unwrap_err(),
     );
@@ -3593,7 +3584,8 @@ fn parse_exists_subquery() {
     let res = parse_sql_statements("SELECT EXISTS (NULL)");
     assert_eq!(
         ParserError::ParserError(
-            "Expected SELECT, VALUES, or a subquery in the query body, found: NULL".to_string()
+            "Expected SELECT, VALUES, FORMAT or a subquery in the query body, found: NULL"
+                .to_string()
         ),
         res.unwrap_err(),
     );
@@ -4057,7 +4049,7 @@ fn lateral_derived() {
     let res = parse_sql_statements(sql);
     assert_eq!(
         ParserError::ParserError(
-            "Expected SELECT, VALUES, or a subquery in the query body, found: b".to_string()
+            "Expected SELECT, VALUES, FORMAT or a subquery in the query body, found: b".to_string()
         ),
         res.unwrap_err()
     );
