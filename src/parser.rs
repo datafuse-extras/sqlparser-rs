@@ -3826,7 +3826,7 @@ impl<'a> Parser<'a> {
             self.get_slice_end(idx, self.peek_token())?
         };
 
-        assert!(start.less_than(&end));
+        assert!(start.less_eq_than(&end));
 
         Ok(StreamSlice { start, end })
     }
