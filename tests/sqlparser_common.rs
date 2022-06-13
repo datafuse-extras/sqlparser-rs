@@ -137,7 +137,6 @@ fn parse_stream_values_insert() {
             expected_values: " ".to_string(),
             expected_format: "".to_string(),
         },
-        
         TestCase {
             sql: "INSERT INTO t FORMAT CSV".to_string(),
             expected_table_name: "t".to_string(),
@@ -195,9 +194,7 @@ fn parse_stream_values_insert() {
                                     (QueryOffset::Normal(start), QueryOffset::EOF) => {
                                         &sql[*start as usize..]
                                     }
-                                    (QueryOffset::EOF, QueryOffset::EOF) => {
-                                        ""
-                                    }
+                                    (QueryOffset::EOF, QueryOffset::EOF) => "",
                                     _ => unreachable!(),
                                 };
                                 assert_eq!(values, expected_values)
