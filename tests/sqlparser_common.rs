@@ -145,6 +145,20 @@ fn parse_stream_values_insert() {
             expected_format: "CSV".to_string(),
         },
         TestCase {
+            sql: "INSERT INTO t FORMAT NDJSON".to_string(),
+            expected_table_name: "t".to_string(),
+            expected_columns: vec![],
+            expected_values: "".to_string(),
+            expected_format: "NDJSON".to_string(),
+        },
+        TestCase {
+            sql: "insert into a(a) format CSV \n100\n200\n300;".to_string(),
+            expected_table_name: "a".to_string(),
+            expected_columns: vec!["a".to_string()],
+            expected_values: " \n100\n200\n300".to_string(),
+            expected_format: "CSV".to_string(),
+        },
+        TestCase {
             sql: "insert into t values(now(), now(), today(), today());".to_string(),
             expected_table_name: "t".to_string(),
             expected_columns: vec![],
