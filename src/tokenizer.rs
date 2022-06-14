@@ -436,6 +436,15 @@ impl<'a> Tokenizer<'a> {
                             _ => {
                                 // regular identifier starting with an "N"
                                 let s = self.tokenize_word('N', chars);
+                                let token = Token::make_word(&s, None);
+                                Self::save_position_if_necessary(
+                                    position_map,
+                                    &token,
+                                    token_idx,
+                                    chars,
+                                    pos as u64,
+                                );
+
                                 Ok(Some(Token::make_word(&s, None)))
                             }
                         }
@@ -453,6 +462,16 @@ impl<'a> Tokenizer<'a> {
                             _ => {
                                 // regular identifier starting with an "X"
                                 let s = self.tokenize_word(x, chars);
+
+                                let token = Token::make_word(&s, None);
+                                Self::save_position_if_necessary(
+                                    position_map,
+                                    &token,
+                                    token_idx,
+                                    chars,
+                                    pos as u64,
+                                );
+
                                 Ok(Some(Token::make_word(&s, None)))
                             }
                         }
@@ -461,7 +480,6 @@ impl<'a> Tokenizer<'a> {
                     ch if self.dialect.is_identifier_start(ch) => {
                         chars.next(); // consume the first char
                         let s = self.tokenize_word(ch, chars);
-
                         if s.chars().all(|x| ('0'..='9').contains(&x) || x == '.') {
                             let mut s =
                                 peeking_take_while(&mut s.char_indices().peekable(), |ch| {
