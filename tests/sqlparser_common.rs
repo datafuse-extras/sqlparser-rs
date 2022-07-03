@@ -1909,24 +1909,34 @@ fn parse_create_table() {
     }
 
     let sql = "CREATE TABLE array_test (\
-               arr ARRAY(INT),
+               arr ARRAY(INT),\
+               arr2 ARRAY(INT NULL),
                )";
     let ast = one_statement_parses_to(
         sql,
         "CREATE TABLE array_test (\
-         arr ARRAY(INT))",
+         arr ARRAY(INT), \
+         arr2 ARRAY(INT NULL))",
     );
     match ast {
         Statement::CreateTable { name, columns, .. } => {
             assert_eq!("array_test", name.to_string());
             assert_eq!(
                 columns,
-                vec![ColumnDef {
-                    name: "arr".into(),
-                    data_type: DataType::Array(Box::new(DataType::Int(None))),
-                    collation: None,
-                    options: vec![],
-                },]
+                vec![
+                    ColumnDef {
+                        name: "arr".into(),
+                        data_type: DataType::Array(Box::new(DataType::Int(None)), false),
+                        collation: None,
+                        options: vec![],
+                    },
+                    ColumnDef {
+                        name: "arr2".into(),
+                        data_type: DataType::Array(Box::new(DataType::Int(None)), true),
+                        collation: None,
+                        options: vec![],
+                    },
+                ]
             );
         }
         _ => unreachable!(),

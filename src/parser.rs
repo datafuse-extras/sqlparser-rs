@@ -2444,8 +2444,13 @@ impl<'a> Parser<'a> {
                 Keyword::ARRAY => {
                     if self.consume_token(&Token::LParen) {
                         let data_type = self.parse_data_type()?;
+                        let nullable = if self.parse_keywords(&[Keyword::NOT, Keyword::NULL]) {
+                            false
+                        } else {
+                            self.parse_keyword(Keyword::NULL)
+                        };
                         self.expect_token(&Token::RParen)?;
-                        Ok(DataType::Array(Box::new(data_type)))
+                        Ok(DataType::Array(Box::new(data_type), nullable))
                     } else {
                         self.prev_token();
                         let type_name = self.parse_object_name()?;

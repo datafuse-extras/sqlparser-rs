@@ -84,7 +84,7 @@ pub enum DataType {
     /// Custom type such as enums
     Custom(ObjectName),
     /// Arrays
-    Array(Box<DataType>),
+    Array(Box<DataType>, bool),
 }
 
 impl fmt::Display for DataType {
@@ -140,7 +140,13 @@ impl fmt::Display for DataType {
             DataType::Text => write!(f, "TEXT"),
             DataType::String => write!(f, "STRING"),
             DataType::Bytea => write!(f, "BYTEA"),
-            DataType::Array(ty) => write!(f, "ARRAY({})", ty),
+            DataType::Array(ty, nullable) => {
+                if *nullable {
+                    write!(f, "ARRAY({} NULL)", ty)
+                } else {
+                    write!(f, "ARRAY({})", ty)
+                }
+            }
             DataType::Custom(ty) => write!(f, "{}", ty),
             DataType::DateTime(n) => format_type_with_optional_length(f, "DATETIME", n, false),
         }
