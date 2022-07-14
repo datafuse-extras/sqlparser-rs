@@ -1350,7 +1350,7 @@ impl<'a> Parser<'a> {
             Token::DoubleColon => Ok(50),
             Token::ExclamationMark => Ok(50),
             Token::LBracket => Ok(10),
-            Token::Colon => Ok(10),
+            Token::Colon => Ok(11),
             _ => Ok(0),
         }
     }
