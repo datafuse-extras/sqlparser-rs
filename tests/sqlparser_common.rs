@@ -815,6 +815,14 @@ fn parse_escaped_single_quote_string_predicate() {
 }
 
 #[test]
+fn parse_select_where_map_access() {
+    let sql = "SELECT * FROM test WHERE id = 1 AND labels:email = 'abc@test.com'";
+    let _ast = verified_only_select(sql);
+    let sql = "SELECT * FROM test WHERE id = 1 OR labels:email = 'abc@test.com'";
+    let _ast = verified_only_select(sql);
+}
+
+#[test]
 fn parse_number() {
     let expr = verified_expr("1.0");
 
