@@ -479,6 +479,7 @@ define_keywords!(
     TRUE,
     TRUNCATE,
     TRY_CAST,
+    TUPLE,
     UESCAPE,
     UNBOUNDED,
     UNCOMMITTED,

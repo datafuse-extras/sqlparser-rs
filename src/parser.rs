@@ -2457,6 +2457,38 @@ impl<'a> Parser<'a> {
                         Ok(DataType::Custom(type_name))
                     }
                 }
+                Keyword::TUPLE => {
+                    self.expect_token(&Token::LParen)?;
+                    if self.consume_token(&Token::RParen) {
+                        return parser_err!("Tuple cannot be empty");
+                    }
+                    let mut names = Vec::new();
+                    let mut data_types = Vec::new();
+                    loop {
+                        if let Some((name, data_type)) =
+                            self.maybe_parse(|parser| parser.parse_named_tuple())
+                        {
+                            names.push(name);
+                            data_types.push(Box::new(data_type));
+                        } else {
+                            let data_type = self.parse_data_type()?;
+                            data_types.push(Box::new(data_type));
+                        }
+                        if self.consume_token(&Token::Comma) {
+                            continue;
+                        }
+                        break;
+                    }
+                    self.expect_token(&Token::RParen)?;
+                    if !names.is_empty() && names.len() != data_types.len() {
+                        return parser_err!("Tuple should be named tuple or anonymous tuple");
+                    }
+                    if names.is_empty() {
+                        Ok(DataType::Tuple(None, data_types))
+                    } else {
+                        Ok(DataType::Tuple(Some(names), data_types))
+                    }
+                }
                 _ => {
                     self.prev_token();
                     let type_name = self.parse_object_name()?;
@@ -2536,6 +2568,13 @@ impl<'a> Parser<'a> {
             }
         }
         Ok(ObjectName(idents))
+    }
+
+    pub fn parse_named_tuple(&mut self) -> Result<(Ident, DataType), ParserError> {
+        let name = self.parse_identifier()?;
+        let data_type = self.parse_data_type()?;
+
+        Ok((name, data_type))
     }
 
     /// Parse a possible time travel point, e.g.

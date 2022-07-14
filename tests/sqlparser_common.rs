@@ -1950,6 +1950,46 @@ fn parse_create_table() {
         _ => unreachable!(),
     }
 
+    let sql = "CREATE TABLE tuple_test (\
+               s1 TUPLE(id INT, name STRING),
+               s2 TUPLE(INT, STRING),
+               )";
+    let ast = one_statement_parses_to(
+        sql,
+        "CREATE TABLE tuple_test (\
+         s1 TUPLE(id INT, name STRING), \
+         s2 TUPLE(INT, STRING))",
+    );
+    match ast {
+        Statement::CreateTable { name, columns, .. } => {
+            assert_eq!("tuple_test", name.to_string());
+            assert_eq!(
+                columns,
+                vec![
+                    ColumnDef {
+                        name: "s1".into(),
+                        data_type: DataType::Tuple(
+                            Some(vec!["id".into(), "name".into()]),
+                            vec![Box::new(DataType::Int(None)), Box::new(DataType::String)]
+                        ),
+                        collation: None,
+                        options: vec![],
+                    },
+                    ColumnDef {
+                        name: "s2".into(),
+                        data_type: DataType::Tuple(
+                            None,
+                            vec![Box::new(DataType::Int(None)), Box::new(DataType::String)]
+                        ),
+                        collation: None,
+                        options: vec![],
+                    },
+                ]
+            );
+        }
+        _ => unreachable!(),
+    }
+
     let res = parse_sql_statements("CREATE TABLE t (a int NOT NULL GARBAGE)");
     assert!(res
         .unwrap_err()
