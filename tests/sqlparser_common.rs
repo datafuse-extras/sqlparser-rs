@@ -816,10 +816,52 @@ fn parse_escaped_single_quote_string_predicate() {
 
 #[test]
 fn parse_select_where_map_access() {
-    let sql = "SELECT * FROM test WHERE id = 1 AND labels:email = 'abc@test.com'";
-    let _ast = verified_only_select(sql);
-    let sql = "SELECT * FROM test WHERE id = 1 OR labels:email = 'abc@test.com'";
-    let _ast = verified_only_select(sql);
+    let sql = "SELECT * FROM test WHERE id = 'a' AND labels:email = 'abc@test.com'";
+    let ast = verified_only_select(sql);
+    assert_eq!(
+        Some(Expr::BinaryOp {
+            left: Box::new(Expr::BinaryOp {
+                left: Box::new(Expr::Identifier(Ident::new("id"))),
+                op: BinaryOperator::Eq,
+                right: Box::new(Expr::Value(Value::SingleQuotedString("a".to_string())))
+            }),
+            op: BinaryOperator::And,
+            right: Box::new(Expr::BinaryOp {
+                left: Box::new(Expr::MapAccess {
+                    column: Box::new(Expr::Identifier(Ident::new("labels"))),
+                    keys: vec![Value::ColonString("email".into())],
+                }),
+                op: BinaryOperator::Eq,
+                right: Box::new(Expr::Value(Value::SingleQuotedString(
+                    "abc@test.com".to_string()
+                )))
+            })
+        }),
+        ast.selection,
+    );
+    let sql = "SELECT * FROM test WHERE id = 'a' OR 'abc@test.com' = labels:email";
+    let ast = verified_only_select(sql);
+    assert_eq!(
+        Some(Expr::BinaryOp {
+            left: Box::new(Expr::BinaryOp {
+                left: Box::new(Expr::Identifier(Ident::new("id"))),
+                op: BinaryOperator::Eq,
+                right: Box::new(Expr::Value(Value::SingleQuotedString("a".to_string())))
+            }),
+            op: BinaryOperator::Or,
+            right: Box::new(Expr::BinaryOp {
+                left: Box::new(Expr::Value(Value::SingleQuotedString(
+                    "abc@test.com".to_string()
+                ))),
+                op: BinaryOperator::Eq,
+                right: Box::new(Expr::MapAccess {
+                    column: Box::new(Expr::Identifier(Ident::new("labels"))),
+                    keys: vec![Value::ColonString("email".into())],
+                })
+            })
+        }),
+        ast.selection,
+    );
 }
 
 #[test]
